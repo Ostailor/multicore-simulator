@@ -115,21 +115,17 @@ function MultiCoreSimulator() {
       }
     });
 
-    // schedule
-    let scheduled, newPointer;
+    // schedule (always returns [scheduledCores, pointer])
+    const [scheduledCores, newPointer] = scheduleTasks(coresClone, tasksClone, {
+      algorithm,
+      quantum,
+      rrPointer,
+    });
     if (algorithm === 'roundRobin') {
-      [scheduled, newPointer] = scheduleTasks(coresClone, tasksClone, {
-        algorithm,
-        quantum,
-        rrPointer,
-      });
       setRrPointer(newPointer);
-    } else {
-      scheduled = scheduleTasks(coresClone, tasksClone, {
-        algorithm,
-        quantum,
-      });
     }
+    // regardless of algorithm, we only care about the cores array here
+    const scheduled = scheduledCores;
 
     // fix task states, record history, commit
     tasksClone.forEach(t => {
@@ -137,7 +133,6 @@ function MultiCoreSimulator() {
       const isRunning = scheduled.some(c => c.currentTask?.id === t.id);
       t.state = isRunning ? 'running' : 'waiting';
     });
-
     setHistory(h => [
       ...h,
       scheduled.map(c => ({
@@ -145,11 +140,10 @@ function MultiCoreSimulator() {
         taskId: c.currentTask?.id ?? null,
       })),
     ]);
-
     setCores(scheduled);
     setTasks(tasksClone);
 
-    // 3) stop the run loop when everything’s done
+    // stop when done…
     if (tasksClone.every(t => t.state === 'finished')) {
       setRunning(false);
     }
